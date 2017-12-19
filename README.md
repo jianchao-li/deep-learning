@@ -1,2 +1,5 @@
-# deep_learning_specialization
-Programming Assignments of Deep Learning Specialization (Coursera)
+# Deep Learning Specialization
+
+**Work in Progress**
+
+Programming Assignments of [Deep Learning Specialization](https://www.coursera.org/specializations/deep-learning)
