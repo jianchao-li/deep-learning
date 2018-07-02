@@ -1,274 +1,197 @@
+#### PART OF THIS CODE IS USING CODE FROM VICTOR SY WANG: https://github.com/iwantooxxoox/Keras-OpenFace/blob/master/utils.py ####
 
-<!DOCTYPE HTML>
-<html>
+import tensorflow as tf
+import numpy as np
+import os
+import cv2
+from numpy import genfromtxt
+from keras.layers import Conv2D, ZeroPadding2D, Activation, Input, concatenate
+from keras.models import Model
+from keras.layers.normalization import BatchNormalization
+from keras.layers.pooling import MaxPooling2D, AveragePooling2D
+import h5py
+import matplotlib.pyplot as plt
 
-<head>
-    <meta charset="utf-8">
 
-    <title>fr_utils.py (editing)</title>
-    <link rel="shortcut icon" type="image/x-icon" href="/user/kizxidyfebvmebaqtklvqg/static/base/images/favicon.ico?v=97c6417ed01bdc0ae3ef32ae4894fd03">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/jquery-ui/themes/smoothness/jquery-ui.min.css?v=9b2c8d3489227115310662a343fce11c" type="text/css" />
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/jquery-typeahead/dist/jquery.typeahead.min.css?v=7afb461de36accb1aa133a1710f5bc56" type="text/css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+_FLOATX = 'float32'
+
+def variable(value, dtype=_FLOATX, name=None):
+    v = tf.Variable(np.asarray(value, dtype=dtype), name=name)
+    _get_session().run(v.initializer)
+    return v
+
+def shape(x):
+    return x.get_shape()
+
+def square(x):
+    return tf.square(x)
+
+def zeros(shape, dtype=_FLOATX, name=None):
+    return variable(np.zeros(shape), dtype, name)
+
+def concatenate(tensors, axis=-1):
+    if axis < 0:
+        axis = axis % len(tensors[0].get_shape())
+    return tf.concat(axis, tensors)
+
+def LRN2D(x):
+    return tf.nn.lrn(x, alpha=1e-4, beta=0.75)
+
+def conv2d_bn(x,
+              layer=None,
+              cv1_out=None,
+              cv1_filter=(1, 1),
+              cv1_strides=(1, 1),
+              cv2_out=None,
+              cv2_filter=(3, 3),
+              cv2_strides=(1, 1),
+              padding=None):
+    num = '' if cv2_out == None else '1'
+    tensor = Conv2D(cv1_out, cv1_filter, strides=cv1_strides, data_format='channels_first', name=layer+'_conv'+num)(x)
+    tensor = BatchNormalization(axis=1, epsilon=0.00001, name=layer+'_bn'+num)(tensor)
+    tensor = Activation('relu')(tensor)
+    if padding == None:
+        return tensor
+    tensor = ZeroPadding2D(padding=padding, data_format='channels_first')(tensor)
+    if cv2_out == None:
+        return tensor
+    tensor = Conv2D(cv2_out, cv2_filter, strides=cv2_strides, data_format='channels_first', name=layer+'_conv'+'2')(tensor)
+    tensor = BatchNormalization(axis=1, epsilon=0.00001, name=layer+'_bn'+'2')(tensor)
+    tensor = Activation('relu')(tensor)
+    return tensor
+
+WEIGHTS = [
+  'conv1', 'bn1', 'conv2', 'bn2', 'conv3', 'bn3',
+  'inception_3a_1x1_conv', 'inception_3a_1x1_bn',
+  'inception_3a_pool_conv', 'inception_3a_pool_bn',
+  'inception_3a_5x5_conv1', 'inception_3a_5x5_conv2', 'inception_3a_5x5_bn1', 'inception_3a_5x5_bn2',
+  'inception_3a_3x3_conv1', 'inception_3a_3x3_conv2', 'inception_3a_3x3_bn1', 'inception_3a_3x3_bn2',
+  'inception_3b_3x3_conv1', 'inception_3b_3x3_conv2', 'inception_3b_3x3_bn1', 'inception_3b_3x3_bn2',
+  'inception_3b_5x5_conv1', 'inception_3b_5x5_conv2', 'inception_3b_5x5_bn1', 'inception_3b_5x5_bn2',
+  'inception_3b_pool_conv', 'inception_3b_pool_bn',
+  'inception_3b_1x1_conv', 'inception_3b_1x1_bn',
+  'inception_3c_3x3_conv1', 'inception_3c_3x3_conv2', 'inception_3c_3x3_bn1', 'inception_3c_3x3_bn2',
+  'inception_3c_5x5_conv1', 'inception_3c_5x5_conv2', 'inception_3c_5x5_bn1', 'inception_3c_5x5_bn2',
+  'inception_4a_3x3_conv1', 'inception_4a_3x3_conv2', 'inception_4a_3x3_bn1', 'inception_4a_3x3_bn2',
+  'inception_4a_5x5_conv1', 'inception_4a_5x5_conv2', 'inception_4a_5x5_bn1', 'inception_4a_5x5_bn2',
+  'inception_4a_pool_conv', 'inception_4a_pool_bn',
+  'inception_4a_1x1_conv', 'inception_4a_1x1_bn',
+  'inception_4e_3x3_conv1', 'inception_4e_3x3_conv2', 'inception_4e_3x3_bn1', 'inception_4e_3x3_bn2',
+  'inception_4e_5x5_conv1', 'inception_4e_5x5_conv2', 'inception_4e_5x5_bn1', 'inception_4e_5x5_bn2',
+  'inception_5a_3x3_conv1', 'inception_5a_3x3_conv2', 'inception_5a_3x3_bn1', 'inception_5a_3x3_bn2',
+  'inception_5a_pool_conv', 'inception_5a_pool_bn',
+  'inception_5a_1x1_conv', 'inception_5a_1x1_bn',
+  'inception_5b_3x3_conv1', 'inception_5b_3x3_conv2', 'inception_5b_3x3_bn1', 'inception_5b_3x3_bn2',
+  'inception_5b_pool_conv', 'inception_5b_pool_bn',
+  'inception_5b_1x1_conv', 'inception_5b_1x1_bn',
+  'dense_layer'
+]
+
+conv_shape = {
+  'conv1': [64, 3, 7, 7],
+  'conv2': [64, 64, 1, 1],
+  'conv3': [192, 64, 3, 3],
+  'inception_3a_1x1_conv': [64, 192, 1, 1],
+  'inception_3a_pool_conv': [32, 192, 1, 1],
+  'inception_3a_5x5_conv1': [16, 192, 1, 1],
+  'inception_3a_5x5_conv2': [32, 16, 5, 5],
+  'inception_3a_3x3_conv1': [96, 192, 1, 1],
+  'inception_3a_3x3_conv2': [128, 96, 3, 3],
+  'inception_3b_3x3_conv1': [96, 256, 1, 1],
+  'inception_3b_3x3_conv2': [128, 96, 3, 3],
+  'inception_3b_5x5_conv1': [32, 256, 1, 1],
+  'inception_3b_5x5_conv2': [64, 32, 5, 5],
+  'inception_3b_pool_conv': [64, 256, 1, 1],
+  'inception_3b_1x1_conv': [64, 256, 1, 1],
+  'inception_3c_3x3_conv1': [128, 320, 1, 1],
+  'inception_3c_3x3_conv2': [256, 128, 3, 3],
+  'inception_3c_5x5_conv1': [32, 320, 1, 1],
+  'inception_3c_5x5_conv2': [64, 32, 5, 5],
+  'inception_4a_3x3_conv1': [96, 640, 1, 1],
+  'inception_4a_3x3_conv2': [192, 96, 3, 3],
+  'inception_4a_5x5_conv1': [32, 640, 1, 1,],
+  'inception_4a_5x5_conv2': [64, 32, 5, 5],
+  'inception_4a_pool_conv': [128, 640, 1, 1],
+  'inception_4a_1x1_conv': [256, 640, 1, 1],
+  'inception_4e_3x3_conv1': [160, 640, 1, 1],
+  'inception_4e_3x3_conv2': [256, 160, 3, 3],
+  'inception_4e_5x5_conv1': [64, 640, 1, 1],
+  'inception_4e_5x5_conv2': [128, 64, 5, 5],
+  'inception_5a_3x3_conv1': [96, 1024, 1, 1],
+  'inception_5a_3x3_conv2': [384, 96, 3, 3],
+  'inception_5a_pool_conv': [96, 1024, 1, 1],
+  'inception_5a_1x1_conv': [256, 1024, 1, 1],
+  'inception_5b_3x3_conv1': [96, 736, 1, 1],
+  'inception_5b_3x3_conv2': [384, 96, 3, 3],
+  'inception_5b_pool_conv': [96, 736, 1, 1],
+  'inception_5b_1x1_conv': [256, 736, 1, 1],
+}
+
+def load_weights_from_FaceNet(FRmodel):
+    # Load weights from csv files (which was exported from Openface torch model)
+    weights = WEIGHTS
+    weights_dict = load_weights()
+
+    # Set layer weights of the model
+    for name in weights:
+        if FRmodel.get_layer(name) != None:
+            FRmodel.get_layer(name).set_weights(weights_dict[name])
+        elif model.get_layer(name) != None:
+            model.get_layer(name).set_weights(weights_dict[name])
+
+def load_weights():
+    # Set weights path
+    dirPath = './weights'
+    fileNames = filter(lambda f: not f.startswith('.'), os.listdir(dirPath))
+    paths = {}
+    weights_dict = {}
+
+    for n in fileNames:
+        paths[n.replace('.csv', '')] = dirPath + '/' + n
+
+    for name in WEIGHTS:
+        if 'conv' in name:
+            conv_w = genfromtxt(paths[name + '_w'], delimiter=',', dtype=None)
+            conv_w = np.reshape(conv_w, conv_shape[name])
+            conv_w = np.transpose(conv_w, (2, 3, 1, 0))
+            conv_b = genfromtxt(paths[name + '_b'], delimiter=',', dtype=None)
+            weights_dict[name] = [conv_w, conv_b]     
+        elif 'bn' in name:
+            bn_w = genfromtxt(paths[name + '_w'], delimiter=',', dtype=None)
+            bn_b = genfromtxt(paths[name + '_b'], delimiter=',', dtype=None)
+            bn_m = genfromtxt(paths[name + '_m'], delimiter=',', dtype=None)
+            bn_v = genfromtxt(paths[name + '_v'], delimiter=',', dtype=None)
+            weights_dict[name] = [bn_w, bn_b, bn_m, bn_v]
+        elif 'dense' in name:
+            dense_w = genfromtxt(dirPath+'/dense_w.csv', delimiter=',', dtype=None)
+            dense_w = np.reshape(dense_w, (128, 736))
+            dense_w = np.transpose(dense_w, (1, 0))
+            dense_b = genfromtxt(dirPath+'/dense_b.csv', delimiter=',', dtype=None)
+            weights_dict[name] = [dense_w, dense_b]
+
+    return weights_dict
+
+
+def load_dataset():
+    train_dataset = h5py.File('datasets/train_happy.h5', "r")
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:]) # your train set features
+    train_set_y_orig = np.array(train_dataset["train_set_y"][:]) # your train set labels
+
+    test_dataset = h5py.File('datasets/test_happy.h5', "r")
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:]) # your test set features
+    test_set_y_orig = np.array(test_dataset["test_set_y"][:]) # your test set labels
+
+    classes = np.array(test_dataset["list_classes"][:]) # the list of classes
     
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
     
-<link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/codemirror/lib/codemirror.css?v=f25e9a9159e54b423b5a8dc4b1ab5c6e">
-<link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/codemirror/addon/dialog/dialog.css?v=c89dce10b44d2882a024e7befc2b63f5">
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
 
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/style/style.min.css?v=29c09309dd70e7fe93378815e5f022ae" type="text/css"/>
-    
-
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/custom/custom.css" type="text/css" />
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/es6-promise/promise.min.js?v=f004a16cb856e0ff11781d01ec5ca8fe" type="text/javascript" charset="utf-8"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/preact/index.js?v=5b98fce8b86ce059de89f9e728e16957" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/proptypes/index.js?v=c40890eb04df9811fcc4d47e53a29604" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/preact-compat/index.js?v=d376eb109a00b9b2e8c0d30782eb6df7" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/requirejs/require.js?v=6da8be361b9ee26c5e721e76c6d4afce" type="text/javascript" charset="utf-8"></script>
-    <script>
-      require.config({
-          
-          urlArgs: "v=20180107121714",
-          
-          baseUrl: '/user/kizxidyfebvmebaqtklvqg/static/',
-          paths: {
-            'auth/js/main': 'auth/js/main.min',
-            custom : '/user/kizxidyfebvmebaqtklvqg/custom',
-            nbextensions : '/user/kizxidyfebvmebaqtklvqg/nbextensions',
-            kernelspecs : '/user/kizxidyfebvmebaqtklvqg/kernelspecs',
-            underscore : 'components/underscore/underscore-min',
-            backbone : 'components/backbone/backbone-min',
-            jquery: 'components/jquery/jquery.min',
-            bootstrap: 'components/bootstrap/js/bootstrap.min',
-            bootstraptour: 'components/bootstrap-tour/build/js/bootstrap-tour.min',
-            'jquery-ui': 'components/jquery-ui/ui/minified/jquery-ui.min',
-            moment: 'components/moment/moment',
-            codemirror: 'components/codemirror',
-            termjs: 'components/xterm.js/dist/xterm',
-            typeahead: 'components/jquery-typeahead/dist/jquery.typeahead.min',
-          },
-          map: { // for backward compatibility
-              "*": {
-                  "jqueryui": "jquery-ui",
-              }
-          },
-          shim: {
-            typeahead: {
-              deps: ["jquery"],
-              exports: "typeahead"
-            },
-            underscore: {
-              exports: '_'
-            },
-            backbone: {
-              deps: ["underscore", "jquery"],
-              exports: "Backbone"
-            },
-            bootstrap: {
-              deps: ["jquery"],
-              exports: "bootstrap"
-            },
-            bootstraptour: {
-              deps: ["bootstrap"],
-              exports: "Tour"
-            },
-            "jquery-ui": {
-              deps: ["jquery"],
-              exports: "$"
-            }
-          },
-          waitSeconds: 30,
-      });
-
-      require.config({
-          map: {
-              '*':{
-                'contents': 'services/contents',
-              }
-          }
-      });
-
-      // error-catching custom.js shim.
-      define("custom", function (require, exports, module) {
-          try {
-              var custom = require('custom/custom');
-              console.debug('loaded custom.js');
-              return custom;
-          } catch (e) {
-              console.error("error loading custom.js", e);
-              return {};
-          }
-      })
-    </script>
-
-    
-    
-
-</head>
-
-<body class="edit_app "
- 
-data-base-url="/user/kizxidyfebvmebaqtklvqg/"
-data-file-path="week4/Face%20Recognition/fr_utils.py"
-
-  
- 
-
-dir="ltr">
-
-<noscript>
-    <div id='noscript'>
-      Jupyter Notebook requires JavaScript.<br>
-      Please enable it to proceed.
-  </div>
-</noscript>
-
-<div id="header">
-  <div id="header-container" class="container">
-  <div id="ipython_notebook" class="nav navbar-brand pull-left"><a href="/user/kizxidyfebvmebaqtklvqg/tree" title='dashboard'>
-<img src='/hub/logo' alt='Jupyter Notebook'/>
-</a></div>
-
-  
-
-  
-  
-
-    <span id="login_widget">
-      
-        <button id="logout" class="btn btn-sm navbar-btn">Logout</button>
-      
-    </span>
-
-  
-
-  
-
-<a href='/hub/home'
- class='btn btn-default btn-sm navbar-btn pull-right'
- style='margin-right: 4px; margin-left: 2px;'
->
-Control Panel</a>
-
-
-  
-
-<span id="save_widget" class="pull-left save_widget">
-    <span class="filename"></span>
-    <span class="last_modified"></span>
-</span>
-
-
-  </div>
-  <div class="header-bar"></div>
-
-  
-
-<div id="menubar-container" class="container">
-  <div id="menubar">
-    <div id="menus" class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-          <p  class="navbar-text indicator_area">
-          <span id="current-mode" >current mode</span>
-          </p>
-        <button type="button" class="btn btn-default navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <i class="fa fa-bars"></i>
-          <span class="navbar-text">Menu</span>
-        </button>
-        <ul class="nav navbar-nav navbar-right">
-          <li id="notification_area"></li>
-        </ul>
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">File</a>
-              <ul id="file-menu" class="dropdown-menu">
-                <li id="new-file"><a href="#">New</a></li>
-                <li id="save-file"><a href="#">Save</a></li>
-                <li id="rename-file"><a href="#">Rename</a></li>
-                <li id="download-file"><a href="#">Download</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Edit</a>
-              <ul id="edit-menu" class="dropdown-menu">
-                <li id="menu-find"><a href="#">Find</a></li>
-                <li id="menu-replace"><a href="#">Find &amp; Replace</a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Key Map</li>
-                <li id="menu-keymap-default"><a href="#">Default<i class="fa"></i></a></li>
-                <li id="menu-keymap-sublime"><a href="#">Sublime Text<i class="fa"></i></a></li>
-                <li id="menu-keymap-vim"><a href="#">Vim<i class="fa"></i></a></li>
-                <li id="menu-keymap-emacs"><a href="#">emacs<i class="fa"></i></a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">View</a>
-              <ul id="view-menu" class="dropdown-menu">
-              <li id="toggle_header" title="Show/Hide the logo and notebook title (above menu bar)">
-              <a href="#">Toggle Header</a></li>
-              <li id="menu-line-numbers"><a href="#">Toggle Line Numbers</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Language</a>
-              <ul id="mode-menu" class="dropdown-menu">
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="lower-header-bar"></div>
-
-
-</div>
-
-<div id="site">
-
-
-<div id="texteditor-backdrop">
-<div id="texteditor-container" class="container"></div>
-</div>
-
-
-</div>
-
-
-
-
-
-
-    
-
-
-<script src="/user/kizxidyfebvmebaqtklvqg/static/edit/js/main.min.js?v=7eb6af843396244a81afb577aedbaf89" type="text/javascript" charset="utf-8"></script>
-
-
-<script type='text/javascript'>
-  function _remove_token_from_url() {
-    if (window.location.search.length <= 1) {
-      return;
-    }
-    var search_parameters = window.location.search.slice(1).split('&');
-    for (var i = 0; i < search_parameters.length; i++) {
-      if (search_parameters[i].split('=')[0] === 'token') {
-        // remote token from search parameters
-        search_parameters.splice(i, 1);
-        var new_search = '';
-        if (search_parameters.length) {
-          new_search = '?' + search_parameters.join('&');
-        }
-        var new_url = window.location.origin + 
-                      window.location.pathname + 
-                      new_search + 
-                      window.location.hash;
-        window.history.replaceState({}, "", new_url);
-        return;
-      }
-    }
-  }
-  _remove_token_from_url();
-</script>
-</body>
-
-</html>
+def img_to_encoding(image_path, model):
+    img1 = cv2.imread(image_path, 1)
+    img = img1[...,::-1]
+    img = np.around(np.transpose(img, (2,0,1))/255.0, decimals=12)
+    x_train = np.array([img])
+    embedding = model.predict_on_batch(x_train)
+    return embedding

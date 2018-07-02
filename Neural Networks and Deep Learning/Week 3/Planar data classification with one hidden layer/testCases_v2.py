@@ -1,259 +1,120 @@
+import numpy as np
 
-<!DOCTYPE HTML>
-<html>
+def layer_sizes_test_case():
+    np.random.seed(1)
+    X_assess = np.random.randn(5, 3)
+    Y_assess = np.random.randn(2, 3)
+    return X_assess, Y_assess
 
-<head>
-    <meta charset="utf-8">
+def initialize_parameters_test_case():
+    n_x, n_h, n_y = 2, 4, 1
+    return n_x, n_h, n_y
 
-    <title>testCases_v2.py (editing)</title>
-    <link rel="shortcut icon" type="image/x-icon" href="/user/tqfxhymjoputxakiwndjwz/static/base/images/favicon.ico?v=30780f272ab4aac64aa073a841546240">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/static/components/jquery-ui/themes/smoothness/jquery-ui.min.css?v=9b2c8d3489227115310662a343fce11c" type="text/css" />
-    <link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/static/components/jquery-typeahead/dist/jquery.typeahead.min.css?v=7afb461de36accb1aa133a1710f5bc56" type="text/css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+def forward_propagation_test_case():
+    np.random.seed(1)
+    X_assess = np.random.randn(2, 3)
+    b1 = np.random.randn(4,1)
+    b2 = np.array([[ -1.3]])
+
+    parameters = {'W1': np.array([[-0.00416758, -0.00056267],
+        [-0.02136196,  0.01640271],
+        [-0.01793436, -0.00841747],
+        [ 0.00502881, -0.01245288]]),
+     'W2': np.array([[-0.01057952, -0.00909008,  0.00551454,  0.02292208]]),
+     'b1': b1,
+     'b2': b2}
+
+    return X_assess, parameters
+
+def compute_cost_test_case():
+    np.random.seed(1)
+    Y_assess = (np.random.randn(1, 3) > 0)
+    parameters = {'W1': np.array([[-0.00416758, -0.00056267],
+        [-0.02136196,  0.01640271],
+        [-0.01793436, -0.00841747],
+        [ 0.00502881, -0.01245288]]),
+     'W2': np.array([[-0.01057952, -0.00909008,  0.00551454,  0.02292208]]),
+     'b1': np.array([[ 0.],
+        [ 0.],
+        [ 0.],
+        [ 0.]]),
+     'b2': np.array([[ 0.]])}
+
+    a2 = (np.array([[ 0.5002307 ,  0.49985831,  0.50023963]]))
     
-    
-<link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/static/components/codemirror/lib/codemirror.css?v=2336fb49f85e9fa887ada9af35223dce">
-<link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/static/components/codemirror/addon/dialog/dialog.css?v=c89dce10b44d2882a024e7befc2b63f5">
+    return a2, Y_assess, parameters
 
-    <link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/static/style/style.min.css?v=f6c09475baf6beabd41f8fe518601204" type="text/css"/>
-    
+def backward_propagation_test_case():
+    np.random.seed(1)
+    X_assess = np.random.randn(2, 3)
+    Y_assess = (np.random.randn(1, 3) > 0)
+    parameters = {'W1': np.array([[-0.00416758, -0.00056267],
+        [-0.02136196,  0.01640271],
+        [-0.01793436, -0.00841747],
+        [ 0.00502881, -0.01245288]]),
+     'W2': np.array([[-0.01057952, -0.00909008,  0.00551454,  0.02292208]]),
+     'b1': np.array([[ 0.],
+        [ 0.],
+        [ 0.],
+        [ 0.]]),
+     'b2': np.array([[ 0.]])}
 
-    <link rel="stylesheet" href="/user/tqfxhymjoputxakiwndjwz/custom/custom.css" type="text/css" />
-    <script src="/user/tqfxhymjoputxakiwndjwz/static/components/es6-promise/promise.min.js?v=f004a16cb856e0ff11781d01ec5ca8fe" type="text/javascript" charset="utf-8"></script>
-    <script src="/user/tqfxhymjoputxakiwndjwz/static/components/requirejs/require.js?v=6da8be361b9ee26c5e721e76c6d4afce" type="text/javascript" charset="utf-8"></script>
-    <script>
-      require.config({
-          
-          urlArgs: "v=20180102003509",
-          
-          baseUrl: '/user/tqfxhymjoputxakiwndjwz/static/',
-          paths: {
-            'auth/js/main': 'auth/js/main.min',
-            custom : '/user/tqfxhymjoputxakiwndjwz/custom',
-            nbextensions : '/user/tqfxhymjoputxakiwndjwz/nbextensions',
-            kernelspecs : '/user/tqfxhymjoputxakiwndjwz/kernelspecs',
-            underscore : 'components/underscore/underscore-min',
-            backbone : 'components/backbone/backbone-min',
-            jquery: 'components/jquery/jquery.min',
-            bootstrap: 'components/bootstrap/js/bootstrap.min',
-            bootstraptour: 'components/bootstrap-tour/build/js/bootstrap-tour.min',
-            'jquery-ui': 'components/jquery-ui/ui/minified/jquery-ui.min',
-            moment: 'components/moment/moment',
-            codemirror: 'components/codemirror',
-            termjs: 'components/term.js/src/term',
-            typeahead: 'components/jquery-typeahead/dist/jquery.typeahead'
-          },
-	  map: { // for backward compatibility
-	    "*": {
-		"jqueryui": "jquery-ui",
-	    }
-	  },
-          shim: {
-            typeahead: {
-              deps: ["jquery"],
-              exports: "typeahead"
-            },
-            underscore: {
-              exports: '_'
-            },
-            backbone: {
-              deps: ["underscore", "jquery"],
-              exports: "Backbone"
-            },
-            bootstrap: {
-              deps: ["jquery"],
-              exports: "bootstrap"
-            },
-            bootstraptour: {
-              deps: ["bootstrap"],
-              exports: "Tour"
-            },
-            "jquery-ui": {
-              deps: ["jquery"],
-              exports: "$"
-            }
-          },
-          waitSeconds: 30,
-      });
+    cache = {'A1': np.array([[-0.00616578,  0.0020626 ,  0.00349619],
+         [-0.05225116,  0.02725659, -0.02646251],
+         [-0.02009721,  0.0036869 ,  0.02883756],
+         [ 0.02152675, -0.01385234,  0.02599885]]),
+  'A2': np.array([[ 0.5002307 ,  0.49985831,  0.50023963]]),
+  'Z1': np.array([[-0.00616586,  0.0020626 ,  0.0034962 ],
+         [-0.05229879,  0.02726335, -0.02646869],
+         [-0.02009991,  0.00368692,  0.02884556],
+         [ 0.02153007, -0.01385322,  0.02600471]]),
+  'Z2': np.array([[ 0.00092281, -0.00056678,  0.00095853]])}
+    return parameters, cache, X_assess, Y_assess
 
-      require.config({
-          map: {
-              '*':{
-                'contents': 'services/contents',
-              }
-          }
-      });
+def update_parameters_test_case():
+    parameters = {'W1': np.array([[-0.00615039,  0.0169021 ],
+        [-0.02311792,  0.03137121],
+        [-0.0169217 , -0.01752545],
+        [ 0.00935436, -0.05018221]]),
+ 'W2': np.array([[-0.0104319 , -0.04019007,  0.01607211,  0.04440255]]),
+ 'b1': np.array([[ -8.97523455e-07],
+        [  8.15562092e-06],
+        [  6.04810633e-07],
+        [ -2.54560700e-06]]),
+ 'b2': np.array([[  9.14954378e-05]])}
 
-      define("bootstrap", function () {
-          return window.$;
-      });
+    grads = {'dW1': np.array([[ 0.00023322, -0.00205423],
+        [ 0.00082222, -0.00700776],
+        [-0.00031831,  0.0028636 ],
+        [-0.00092857,  0.00809933]]),
+ 'dW2': np.array([[ -1.75740039e-05,   3.70231337e-03,  -1.25683095e-03,
+          -2.55715317e-03]]),
+ 'db1': np.array([[  1.05570087e-07],
+        [ -3.81814487e-06],
+        [ -1.90155145e-07],
+        [  5.46467802e-07]]),
+ 'db2': np.array([[ -1.08923140e-05]])}
+    return parameters, grads
 
-      define("jquery", function () {
-          return window.$;
-      });
+def nn_model_test_case():
+    np.random.seed(1)
+    X_assess = np.random.randn(2, 3)
+    Y_assess = (np.random.randn(1, 3) > 0)
+    return X_assess, Y_assess
 
-      define("jqueryui", function () {
-          return window.$;
-      });
+def predict_test_case():
+    np.random.seed(1)
+    X_assess = np.random.randn(2, 3)
+    parameters = {'W1': np.array([[-0.00615039,  0.0169021 ],
+        [-0.02311792,  0.03137121],
+        [-0.0169217 , -0.01752545],
+        [ 0.00935436, -0.05018221]]),
+     'W2': np.array([[-0.0104319 , -0.04019007,  0.01607211,  0.04440255]]),
+     'b1': np.array([[ -8.97523455e-07],
+        [  8.15562092e-06],
+        [  6.04810633e-07],
+        [ -2.54560700e-06]]),
+     'b2': np.array([[  9.14954378e-05]])}
+    return parameters, X_assess
 
-      define("jquery-ui", function () {
-          return window.$;
-      });
-      // error-catching custom.js shim.
-      define("custom", function (require, exports, module) {
-          try {
-              var custom = require('custom/custom');
-              console.debug('loaded custom.js');
-              return custom;
-          } catch (e) {
-              console.error("error loading custom.js", e);
-              return {};
-          }
-      })
-    </script>
-
-    
-    
-
-</head>
-
-<body class="edit_app " 
-data-base-url="/user/tqfxhymjoputxakiwndjwz/"
-data-file-path="Week%203/Planar%20data%20classification%20with%20one%20hidden%20layer/testCases_v2.py"
-
->
-
-<noscript>
-    <div id='noscript'>
-      Jupyter Notebook requires JavaScript.<br>
-      Please enable it to proceed.
-  </div>
-</noscript>
-
-<div id="header">
-  <div id="header-container" class="container">
-  <div id="ipython_notebook" class="nav navbar-brand pull-left"><a href="/user/tqfxhymjoputxakiwndjwz/tree" title='dashboard'>
-<img src='/hub/logo' alt='Jupyter Notebook'/>
-</a></div>
-
-  
-
-  
-  
-
-    <span id="login_widget">
-      
-        <button id="logout" class="btn btn-sm navbar-btn">Logout</button>
-      
-    </span>
-
-  
-
-  
-
-<a href='/hub/home'
- class='btn btn-default btn-sm navbar-btn pull-right'
- style='margin-right: 4px; margin-left: 2px;'
->
-Control Panel</a>
-
-
-  
-
-<span id="save_widget" class="pull-left save_widget">
-    <span class="filename"></span>
-    <span class="last_modified"></span>
-</span>
-
-
-  </div>
-  <div class="header-bar"></div>
-
-  
-
-<div id="menubar-container" class="container">
-  <div id="menubar">
-    <div id="menus" class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-          <p  class="navbar-text indicator_area">
-          <span id="current-mode" >current mode</span>
-          </p>
-        <button type="button" class="btn btn-default navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <i class="fa fa-bars"></i>
-          <span class="navbar-text">Menu</span>
-        </button>
-        <ul class="nav navbar-nav navbar-right">
-          <li id="notification_area"></li>
-        </ul>
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">File</a>
-              <ul id="file-menu" class="dropdown-menu">
-                <li id="new-file"><a href="#">New</a></li>
-                <li id="save-file"><a href="#">Save</a></li>
-                <li id="rename-file"><a href="#">Rename</a></li>
-                <li id="download-file"><a href="#">Download</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Edit</a>
-              <ul id="edit-menu" class="dropdown-menu">
-                <li id="menu-find"><a href="#">Find</a></li>
-                <li id="menu-replace"><a href="#">Find &amp; Replace</a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Key Map</li>
-                <li id="menu-keymap-default"><a href="#">Default<i class="fa"></i></a></li>
-                <li id="menu-keymap-sublime"><a href="#">Sublime Text<i class="fa"></i></a></li>
-                <li id="menu-keymap-vim"><a href="#">Vim<i class="fa"></i></a></li>
-                <li id="menu-keymap-emacs"><a href="#">emacs<i class="fa"></i></a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">View</a>
-              <ul id="view-menu" class="dropdown-menu">
-              <li id="toggle_header" title="Show/Hide the logo and notebook title (above menu bar)">
-              <a href="#">Toggle Header</a></li>
-              <li id="menu-line-numbers"><a href="#">Toggle Line Numbers</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Language</a>
-              <ul id="mode-menu" class="dropdown-menu">
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="lower-header-bar"></div>
-
-
-</div>
-
-<div id="site">
-
-
-<div id="texteditor-backdrop">
-<div id="texteditor-container" class="container"></div>
-</div>
-
-
-</div>
-
-
-
-
-
-
-    
-
-
-
-    <script src="/user/tqfxhymjoputxakiwndjwz/static/edit/js/main.min.js?v=cc7536522bdf28a7f0059136b696fd6e" type="text/javascript" charset="utf-8"></script>
-
-
-
-</body>
-
-</html>

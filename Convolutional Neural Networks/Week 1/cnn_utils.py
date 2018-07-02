@@ -1,274 +1,155 @@
+import math
+import numpy as np
+import h5py
+import matplotlib.pyplot as plt
+import tensorflow as tf
+from tensorflow.python.framework import ops
 
-<!DOCTYPE HTML>
-<html>
+def load_dataset():
+    train_dataset = h5py.File('datasets/train_signs.h5', "r")
+    train_set_x_orig = np.array(train_dataset["train_set_x"][:]) # your train set features
+    train_set_y_orig = np.array(train_dataset["train_set_y"][:]) # your train set labels
 
-<head>
-    <meta charset="utf-8">
+    test_dataset = h5py.File('datasets/test_signs.h5', "r")
+    test_set_x_orig = np.array(test_dataset["test_set_x"][:]) # your test set features
+    test_set_y_orig = np.array(test_dataset["test_set_y"][:]) # your test set labels
 
-    <title>cnn_utils.py (editing)</title>
-    <link rel="shortcut icon" type="image/x-icon" href="/user/kizxidyfebvmebaqtklvqg/static/base/images/favicon.ico?v=97c6417ed01bdc0ae3ef32ae4894fd03">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/jquery-ui/themes/smoothness/jquery-ui.min.css?v=9b2c8d3489227115310662a343fce11c" type="text/css" />
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/jquery-typeahead/dist/jquery.typeahead.min.css?v=7afb461de36accb1aa133a1710f5bc56" type="text/css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    classes = np.array(test_dataset["list_classes"][:]) # the list of classes
     
+    train_set_y_orig = train_set_y_orig.reshape((1, train_set_y_orig.shape[0]))
+    test_set_y_orig = test_set_y_orig.reshape((1, test_set_y_orig.shape[0]))
     
-<link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/codemirror/lib/codemirror.css?v=f25e9a9159e54b423b5a8dc4b1ab5c6e">
-<link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/components/codemirror/addon/dialog/dialog.css?v=c89dce10b44d2882a024e7befc2b63f5">
+    return train_set_x_orig, train_set_y_orig, test_set_x_orig, test_set_y_orig, classes
 
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/static/style/style.min.css?v=29c09309dd70e7fe93378815e5f022ae" type="text/css"/>
+
+def random_mini_batches(X, Y, mini_batch_size = 64, seed = 0):
+    """
+    Creates a list of random minibatches from (X, Y)
     
-
-    <link rel="stylesheet" href="/user/kizxidyfebvmebaqtklvqg/custom/custom.css" type="text/css" />
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/es6-promise/promise.min.js?v=f004a16cb856e0ff11781d01ec5ca8fe" type="text/javascript" charset="utf-8"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/preact/index.js?v=5b98fce8b86ce059de89f9e728e16957" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/proptypes/index.js?v=c40890eb04df9811fcc4d47e53a29604" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/preact-compat/index.js?v=d376eb109a00b9b2e8c0d30782eb6df7" type="text/javascript"></script>
-    <script src="/user/kizxidyfebvmebaqtklvqg/static/components/requirejs/require.js?v=6da8be361b9ee26c5e721e76c6d4afce" type="text/javascript" charset="utf-8"></script>
-    <script>
-      require.config({
-          
-          urlArgs: "v=20180105153017",
-          
-          baseUrl: '/user/kizxidyfebvmebaqtklvqg/static/',
-          paths: {
-            'auth/js/main': 'auth/js/main.min',
-            custom : '/user/kizxidyfebvmebaqtklvqg/custom',
-            nbextensions : '/user/kizxidyfebvmebaqtklvqg/nbextensions',
-            kernelspecs : '/user/kizxidyfebvmebaqtklvqg/kernelspecs',
-            underscore : 'components/underscore/underscore-min',
-            backbone : 'components/backbone/backbone-min',
-            jquery: 'components/jquery/jquery.min',
-            bootstrap: 'components/bootstrap/js/bootstrap.min',
-            bootstraptour: 'components/bootstrap-tour/build/js/bootstrap-tour.min',
-            'jquery-ui': 'components/jquery-ui/ui/minified/jquery-ui.min',
-            moment: 'components/moment/moment',
-            codemirror: 'components/codemirror',
-            termjs: 'components/xterm.js/dist/xterm',
-            typeahead: 'components/jquery-typeahead/dist/jquery.typeahead.min',
-          },
-          map: { // for backward compatibility
-              "*": {
-                  "jqueryui": "jquery-ui",
-              }
-          },
-          shim: {
-            typeahead: {
-              deps: ["jquery"],
-              exports: "typeahead"
-            },
-            underscore: {
-              exports: '_'
-            },
-            backbone: {
-              deps: ["underscore", "jquery"],
-              exports: "Backbone"
-            },
-            bootstrap: {
-              deps: ["jquery"],
-              exports: "bootstrap"
-            },
-            bootstraptour: {
-              deps: ["bootstrap"],
-              exports: "Tour"
-            },
-            "jquery-ui": {
-              deps: ["jquery"],
-              exports: "$"
-            }
-          },
-          waitSeconds: 30,
-      });
-
-      require.config({
-          map: {
-              '*':{
-                'contents': 'services/contents',
-              }
-          }
-      });
-
-      // error-catching custom.js shim.
-      define("custom", function (require, exports, module) {
-          try {
-              var custom = require('custom/custom');
-              console.debug('loaded custom.js');
-              return custom;
-          } catch (e) {
-              console.error("error loading custom.js", e);
-              return {};
-          }
-      })
-    </script>
-
+    Arguments:
+    X -- input data, of shape (input size, number of examples) (m, Hi, Wi, Ci)
+    Y -- true "label" vector (containing 0 if cat, 1 if non-cat), of shape (1, number of examples) (m, n_y)
+    mini_batch_size - size of the mini-batches, integer
+    seed -- this is only for the purpose of grading, so that you're "random minibatches are the same as ours.
     
+    Returns:
+    mini_batches -- list of synchronous (mini_batch_X, mini_batch_Y)
+    """
     
-
-</head>
-
-<body class="edit_app "
- 
-data-base-url="/user/kizxidyfebvmebaqtklvqg/"
-data-file-path="week1/cnn_utils.py"
-
-  
- 
-
-dir="ltr">
-
-<noscript>
-    <div id='noscript'>
-      Jupyter Notebook requires JavaScript.<br>
-      Please enable it to proceed.
-  </div>
-</noscript>
-
-<div id="header">
-  <div id="header-container" class="container">
-  <div id="ipython_notebook" class="nav navbar-brand pull-left"><a href="/user/kizxidyfebvmebaqtklvqg/tree" title='dashboard'>
-<img src='/hub/logo' alt='Jupyter Notebook'/>
-</a></div>
-
-  
-
-  
-  
-
-    <span id="login_widget">
-      
-        <button id="logout" class="btn btn-sm navbar-btn">Logout</button>
-      
-    </span>
-
-  
-
-  
-
-<a href='/hub/home'
- class='btn btn-default btn-sm navbar-btn pull-right'
- style='margin-right: 4px; margin-left: 2px;'
->
-Control Panel</a>
-
-
-  
-
-<span id="save_widget" class="pull-left save_widget">
-    <span class="filename"></span>
-    <span class="last_modified"></span>
-</span>
-
-
-  </div>
-  <div class="header-bar"></div>
-
-  
-
-<div id="menubar-container" class="container">
-  <div id="menubar">
-    <div id="menus" class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-          <p  class="navbar-text indicator_area">
-          <span id="current-mode" >current mode</span>
-          </p>
-        <button type="button" class="btn btn-default navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <i class="fa fa-bars"></i>
-          <span class="navbar-text">Menu</span>
-        </button>
-        <ul class="nav navbar-nav navbar-right">
-          <li id="notification_area"></li>
-        </ul>
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">File</a>
-              <ul id="file-menu" class="dropdown-menu">
-                <li id="new-file"><a href="#">New</a></li>
-                <li id="save-file"><a href="#">Save</a></li>
-                <li id="rename-file"><a href="#">Rename</a></li>
-                <li id="download-file"><a href="#">Download</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Edit</a>
-              <ul id="edit-menu" class="dropdown-menu">
-                <li id="menu-find"><a href="#">Find</a></li>
-                <li id="menu-replace"><a href="#">Find &amp; Replace</a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Key Map</li>
-                <li id="menu-keymap-default"><a href="#">Default<i class="fa"></i></a></li>
-                <li id="menu-keymap-sublime"><a href="#">Sublime Text<i class="fa"></i></a></li>
-                <li id="menu-keymap-vim"><a href="#">Vim<i class="fa"></i></a></li>
-                <li id="menu-keymap-emacs"><a href="#">emacs<i class="fa"></i></a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">View</a>
-              <ul id="view-menu" class="dropdown-menu">
-              <li id="toggle_header" title="Show/Hide the logo and notebook title (above menu bar)">
-              <a href="#">Toggle Header</a></li>
-              <li id="menu-line-numbers"><a href="#">Toggle Line Numbers</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Language</a>
-              <ul id="mode-menu" class="dropdown-menu">
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="lower-header-bar"></div>
-
-
-</div>
-
-<div id="site">
-
-
-<div id="texteditor-backdrop">
-<div id="texteditor-container" class="container"></div>
-</div>
-
-
-</div>
-
-
-
-
-
-
+    m = X.shape[0]                  # number of training examples
+    mini_batches = []
+    np.random.seed(seed)
     
+    # Step 1: Shuffle (X, Y)
+    permutation = list(np.random.permutation(m))
+    shuffled_X = X[permutation,:,:,:]
+    shuffled_Y = Y[permutation,:]
+
+    # Step 2: Partition (shuffled_X, shuffled_Y). Minus the end case.
+    num_complete_minibatches = math.floor(m/mini_batch_size) # number of mini batches of size mini_batch_size in your partitionning
+    for k in range(0, num_complete_minibatches):
+        mini_batch_X = shuffled_X[k * mini_batch_size : k * mini_batch_size + mini_batch_size,:,:,:]
+        mini_batch_Y = shuffled_Y[k * mini_batch_size : k * mini_batch_size + mini_batch_size,:]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+    
+    # Handling the end case (last mini-batch < mini_batch_size)
+    if m % mini_batch_size != 0:
+        mini_batch_X = shuffled_X[num_complete_minibatches * mini_batch_size : m,:,:,:]
+        mini_batch_Y = shuffled_Y[num_complete_minibatches * mini_batch_size : m,:]
+        mini_batch = (mini_batch_X, mini_batch_Y)
+        mini_batches.append(mini_batch)
+    
+    return mini_batches
 
 
-<script src="/user/kizxidyfebvmebaqtklvqg/static/edit/js/main.min.js?v=7eb6af843396244a81afb577aedbaf89" type="text/javascript" charset="utf-8"></script>
+def convert_to_one_hot(Y, C):
+    Y = np.eye(C)[Y.reshape(-1)].T
+    return Y
 
 
-<script type='text/javascript'>
-  function _remove_token_from_url() {
-    if (window.location.search.length <= 1) {
-      return;
-    }
-    var search_parameters = window.location.search.slice(1).split('&');
-    for (var i = 0; i < search_parameters.length; i++) {
-      if (search_parameters[i].split('=')[0] === 'token') {
-        // remote token from search parameters
-        search_parameters.splice(i, 1);
-        var new_search = '';
-        if (search_parameters.length) {
-          new_search = '?' + search_parameters.join('&');
-        }
-        var new_url = window.location.origin + 
-                      window.location.pathname + 
-                      new_search + 
-                      window.location.hash;
-        window.history.replaceState({}, "", new_url);
-        return;
-      }
-    }
-  }
-  _remove_token_from_url();
-</script>
-</body>
+def forward_propagation_for_predict(X, parameters):
+    """
+    Implements the forward propagation for the model: LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SOFTMAX
+    
+    Arguments:
+    X -- input dataset placeholder, of shape (input size, number of examples)
+    parameters -- python dictionary containing your parameters "W1", "b1", "W2", "b2", "W3", "b3"
+                  the shapes are given in initialize_parameters
 
-</html>
+    Returns:
+    Z3 -- the output of the last LINEAR unit
+    """
+    
+    # Retrieve the parameters from the dictionary "parameters" 
+    W1 = parameters['W1']
+    b1 = parameters['b1']
+    W2 = parameters['W2']
+    b2 = parameters['b2']
+    W3 = parameters['W3']
+    b3 = parameters['b3'] 
+                                                           # Numpy Equivalents:
+    Z1 = tf.add(tf.matmul(W1, X), b1)                      # Z1 = np.dot(W1, X) + b1
+    A1 = tf.nn.relu(Z1)                                    # A1 = relu(Z1)
+    Z2 = tf.add(tf.matmul(W2, A1), b2)                     # Z2 = np.dot(W2, a1) + b2
+    A2 = tf.nn.relu(Z2)                                    # A2 = relu(Z2)
+    Z3 = tf.add(tf.matmul(W3, A2), b3)                     # Z3 = np.dot(W3,Z2) + b3
+    
+    return Z3
+
+def predict(X, parameters):
+    
+    W1 = tf.convert_to_tensor(parameters["W1"])
+    b1 = tf.convert_to_tensor(parameters["b1"])
+    W2 = tf.convert_to_tensor(parameters["W2"])
+    b2 = tf.convert_to_tensor(parameters["b2"])
+    W3 = tf.convert_to_tensor(parameters["W3"])
+    b3 = tf.convert_to_tensor(parameters["b3"])
+    
+    params = {"W1": W1,
+              "b1": b1,
+              "W2": W2,
+              "b2": b2,
+              "W3": W3,
+              "b3": b3}
+    
+    x = tf.placeholder("float", [12288, 1])
+    
+    z3 = forward_propagation_for_predict(x, params)
+    p = tf.argmax(z3)
+    
+    sess = tf.Session()
+    prediction = sess.run(p, feed_dict = {x: X})
+        
+    return prediction
+
+#def predict(X, parameters):
+#    
+#    W1 = tf.convert_to_tensor(parameters["W1"])
+#    b1 = tf.convert_to_tensor(parameters["b1"])
+#    W2 = tf.convert_to_tensor(parameters["W2"])
+#    b2 = tf.convert_to_tensor(parameters["b2"])
+##    W3 = tf.convert_to_tensor(parameters["W3"])
+##    b3 = tf.convert_to_tensor(parameters["b3"])
+#    
+##    params = {"W1": W1,
+##              "b1": b1,
+##              "W2": W2,
+##              "b2": b2,
+##              "W3": W3,
+##              "b3": b3}
+#
+#    params = {"W1": W1,
+#              "b1": b1,
+#              "W2": W2,
+#              "b2": b2}    
+#    
+#    x = tf.placeholder("float", [12288, 1])
+#    
+#    z3 = forward_propagation(x, params)
+#    p = tf.argmax(z3)
+#    
+#    with tf.Session() as sess:
+#        prediction = sess.run(p, feed_dict = {x: X})
+#        
+#    return prediction

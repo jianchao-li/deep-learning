@@ -1,274 +1,260 @@
+import numpy as np
+import matplotlib.pyplot as plt
+import h5py
+import scipy.io
+import sklearn
+import sklearn.datasets
 
-<!DOCTYPE HTML>
-<html>
+def sigmoid(x):
+    """
+    Compute the sigmoid of x
 
-<head>
-    <meta charset="utf-8">
+    Arguments:
+    x -- A scalar or numpy array of any size.
 
-    <title>opt_utils.py (editing)</title>
-    <link rel="shortcut icon" type="image/x-icon" href="/user/ssxwhunsqtlsjfjnkifmti/static/base/images/favicon.ico?v=97c6417ed01bdc0ae3ef32ae4894fd03">
-    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
-    <link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/static/components/jquery-ui/themes/smoothness/jquery-ui.min.css?v=9b2c8d3489227115310662a343fce11c" type="text/css" />
-    <link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/static/components/jquery-typeahead/dist/jquery.typeahead.min.css?v=7afb461de36accb1aa133a1710f5bc56" type="text/css" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    Return:
+    s -- sigmoid(x)
+    """
+    s = 1/(1+np.exp(-x))
+    return s
+
+def relu(x):
+    """
+    Compute the relu of x
+
+    Arguments:
+    x -- A scalar or numpy array of any size.
+
+    Return:
+    s -- relu(x)
+    """
+    s = np.maximum(0,x)
     
+    return s
+
+def load_params_and_grads(seed=1):
+    np.random.seed(seed)
+    W1 = np.random.randn(2,3)
+    b1 = np.random.randn(2,1)
+    W2 = np.random.randn(3,3)
+    b2 = np.random.randn(3,1)
+
+    dW1 = np.random.randn(2,3)
+    db1 = np.random.randn(2,1)
+    dW2 = np.random.randn(3,3)
+    db2 = np.random.randn(3,1)
     
-<link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/static/components/codemirror/lib/codemirror.css?v=f25e9a9159e54b423b5a8dc4b1ab5c6e">
-<link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/static/components/codemirror/addon/dialog/dialog.css?v=c89dce10b44d2882a024e7befc2b63f5">
+    return W1, b1, W2, b2, dW1, db1, dW2, db2
 
-    <link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/static/style/style.min.css?v=29c09309dd70e7fe93378815e5f022ae" type="text/css"/>
+
+def initialize_parameters(layer_dims):
+    """
+    Arguments:
+    layer_dims -- python array (list) containing the dimensions of each layer in our network
     
-
-    <link rel="stylesheet" href="/user/ssxwhunsqtlsjfjnkifmti/custom/custom.css" type="text/css" />
-    <script src="/user/ssxwhunsqtlsjfjnkifmti/static/components/es6-promise/promise.min.js?v=f004a16cb856e0ff11781d01ec5ca8fe" type="text/javascript" charset="utf-8"></script>
-    <script src="/user/ssxwhunsqtlsjfjnkifmti/static/components/preact/index.js?v=5b98fce8b86ce059de89f9e728e16957" type="text/javascript"></script>
-    <script src="/user/ssxwhunsqtlsjfjnkifmti/static/components/proptypes/index.js?v=c40890eb04df9811fcc4d47e53a29604" type="text/javascript"></script>
-    <script src="/user/ssxwhunsqtlsjfjnkifmti/static/components/preact-compat/index.js?v=d376eb109a00b9b2e8c0d30782eb6df7" type="text/javascript"></script>
-    <script src="/user/ssxwhunsqtlsjfjnkifmti/static/components/requirejs/require.js?v=6da8be361b9ee26c5e721e76c6d4afce" type="text/javascript" charset="utf-8"></script>
-    <script>
-      require.config({
-          
-          urlArgs: "v=20180102233518",
-          
-          baseUrl: '/user/ssxwhunsqtlsjfjnkifmti/static/',
-          paths: {
-            'auth/js/main': 'auth/js/main.min',
-            custom : '/user/ssxwhunsqtlsjfjnkifmti/custom',
-            nbextensions : '/user/ssxwhunsqtlsjfjnkifmti/nbextensions',
-            kernelspecs : '/user/ssxwhunsqtlsjfjnkifmti/kernelspecs',
-            underscore : 'components/underscore/underscore-min',
-            backbone : 'components/backbone/backbone-min',
-            jquery: 'components/jquery/jquery.min',
-            bootstrap: 'components/bootstrap/js/bootstrap.min',
-            bootstraptour: 'components/bootstrap-tour/build/js/bootstrap-tour.min',
-            'jquery-ui': 'components/jquery-ui/ui/minified/jquery-ui.min',
-            moment: 'components/moment/moment',
-            codemirror: 'components/codemirror',
-            termjs: 'components/xterm.js/dist/xterm',
-            typeahead: 'components/jquery-typeahead/dist/jquery.typeahead.min',
-          },
-          map: { // for backward compatibility
-              "*": {
-                  "jqueryui": "jquery-ui",
-              }
-          },
-          shim: {
-            typeahead: {
-              deps: ["jquery"],
-              exports: "typeahead"
-            },
-            underscore: {
-              exports: '_'
-            },
-            backbone: {
-              deps: ["underscore", "jquery"],
-              exports: "Backbone"
-            },
-            bootstrap: {
-              deps: ["jquery"],
-              exports: "bootstrap"
-            },
-            bootstraptour: {
-              deps: ["bootstrap"],
-              exports: "Tour"
-            },
-            "jquery-ui": {
-              deps: ["jquery"],
-              exports: "$"
-            }
-          },
-          waitSeconds: 30,
-      });
-
-      require.config({
-          map: {
-              '*':{
-                'contents': 'services/contents',
-              }
-          }
-      });
-
-      // error-catching custom.js shim.
-      define("custom", function (require, exports, module) {
-          try {
-              var custom = require('custom/custom');
-              console.debug('loaded custom.js');
-              return custom;
-          } catch (e) {
-              console.error("error loading custom.js", e);
-              return {};
-          }
-      })
-    </script>
-
+    Returns:
+    parameters -- python dictionary containing your parameters "W1", "b1", ..., "WL", "bL":
+                    W1 -- weight matrix of shape (layer_dims[l], layer_dims[l-1])
+                    b1 -- bias vector of shape (layer_dims[l], 1)
+                    Wl -- weight matrix of shape (layer_dims[l-1], layer_dims[l])
+                    bl -- bias vector of shape (1, layer_dims[l])
+                    
+    Tips:
+    - For example: the layer_dims for the "Planar Data classification model" would have been [2,2,1]. 
+    This means W1's shape was (2,2), b1 was (1,2), W2 was (2,1) and b2 was (1,1). Now you have to generalize it!
+    - In the for loop, use parameters['W' + str(l)] to access Wl, where l is the iterative integer.
+    """
     
+    np.random.seed(3)
+    parameters = {}
+    L = len(layer_dims) # number of layers in the network
+
+    for l in range(1, L):
+        parameters['W' + str(l)] = np.random.randn(layer_dims[l], layer_dims[l-1])*  np.sqrt(2 / layer_dims[l-1])
+        parameters['b' + str(l)] = np.zeros((layer_dims[l], 1))
+        
+        assert(parameters['W' + str(l)].shape == layer_dims[l], layer_dims[l-1])
+        assert(parameters['W' + str(l)].shape == layer_dims[l], 1)
+        
+    return parameters
+
+
+def compute_cost(a3, Y):
     
-
-</head>
-
-<body class="edit_app "
- 
-data-base-url="/user/ssxwhunsqtlsjfjnkifmti/"
-data-file-path="week6/opt_utils.py"
-
-  
- 
-
-dir="ltr">
-
-<noscript>
-    <div id='noscript'>
-      Jupyter Notebook requires JavaScript.<br>
-      Please enable it to proceed.
-  </div>
-</noscript>
-
-<div id="header">
-  <div id="header-container" class="container">
-  <div id="ipython_notebook" class="nav navbar-brand pull-left"><a href="/user/ssxwhunsqtlsjfjnkifmti/tree" title='dashboard'>
-<img src='/hub/logo' alt='Jupyter Notebook'/>
-</a></div>
-
-  
-
-  
-  
-
-    <span id="login_widget">
-      
-        <button id="logout" class="btn btn-sm navbar-btn">Logout</button>
-      
-    </span>
-
-  
-
-  
-
-<a href='/hub/home'
- class='btn btn-default btn-sm navbar-btn pull-right'
- style='margin-right: 4px; margin-left: 2px;'
->
-Control Panel</a>
-
-
-  
-
-<span id="save_widget" class="pull-left save_widget">
-    <span class="filename"></span>
-    <span class="last_modified"></span>
-</span>
-
-
-  </div>
-  <div class="header-bar"></div>
-
-  
-
-<div id="menubar-container" class="container">
-  <div id="menubar">
-    <div id="menus" class="navbar navbar-default" role="navigation">
-      <div class="container-fluid">
-          <p  class="navbar-text indicator_area">
-          <span id="current-mode" >current mode</span>
-          </p>
-        <button type="button" class="btn btn-default navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
-          <i class="fa fa-bars"></i>
-          <span class="navbar-text">Menu</span>
-        </button>
-        <ul class="nav navbar-nav navbar-right">
-          <li id="notification_area"></li>
-        </ul>
-        <div class="navbar-collapse collapse">
-          <ul class="nav navbar-nav">
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">File</a>
-              <ul id="file-menu" class="dropdown-menu">
-                <li id="new-file"><a href="#">New</a></li>
-                <li id="save-file"><a href="#">Save</a></li>
-                <li id="rename-file"><a href="#">Rename</a></li>
-                <li id="download-file"><a href="#">Download</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Edit</a>
-              <ul id="edit-menu" class="dropdown-menu">
-                <li id="menu-find"><a href="#">Find</a></li>
-                <li id="menu-replace"><a href="#">Find &amp; Replace</a></li>
-                <li class="divider"></li>
-                <li class="dropdown-header">Key Map</li>
-                <li id="menu-keymap-default"><a href="#">Default<i class="fa"></i></a></li>
-                <li id="menu-keymap-sublime"><a href="#">Sublime Text<i class="fa"></i></a></li>
-                <li id="menu-keymap-vim"><a href="#">Vim<i class="fa"></i></a></li>
-                <li id="menu-keymap-emacs"><a href="#">emacs<i class="fa"></i></a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">View</a>
-              <ul id="view-menu" class="dropdown-menu">
-              <li id="toggle_header" title="Show/Hide the logo and notebook title (above menu bar)">
-              <a href="#">Toggle Header</a></li>
-              <li id="menu-line-numbers"><a href="#">Toggle Line Numbers</a></li>
-              </ul>
-            </li>
-            <li class="dropdown"><a href="#" class="dropdown-toggle" data-toggle="dropdown">Language</a>
-              <ul id="mode-menu" class="dropdown-menu">
-              </ul>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="lower-header-bar"></div>
-
-
-</div>
-
-<div id="site">
-
-
-<div id="texteditor-backdrop">
-<div id="texteditor-container" class="container"></div>
-</div>
-
-
-</div>
-
-
-
-
-
-
+    """
+    Implement the cost function
     
+    Arguments:
+    a3 -- post-activation, output of forward propagation
+    Y -- "true" labels vector, same shape as a3
+    
+    Returns:
+    cost - value of the cost function
+    """
+    m = Y.shape[1]
+    
+    logprobs = np.multiply(-np.log(a3),Y) + np.multiply(-np.log(1 - a3), 1 - Y)
+    cost = 1./m * np.sum(logprobs)
+    
+    return cost
 
+def forward_propagation(X, parameters):
+    """
+    Implements the forward propagation (and computes the loss) presented in Figure 2.
+    
+    Arguments:
+    X -- input dataset, of shape (input size, number of examples)
+    parameters -- python dictionary containing your parameters "W1", "b1", "W2", "b2", "W3", "b3":
+                    W1 -- weight matrix of shape ()
+                    b1 -- bias vector of shape ()
+                    W2 -- weight matrix of shape ()
+                    b2 -- bias vector of shape ()
+                    W3 -- weight matrix of shape ()
+                    b3 -- bias vector of shape ()
+    
+    Returns:
+    loss -- the loss function (vanilla logistic loss)
+    """
+    
+    # retrieve parameters
+    W1 = parameters["W1"]
+    b1 = parameters["b1"]
+    W2 = parameters["W2"]
+    b2 = parameters["b2"]
+    W3 = parameters["W3"]
+    b3 = parameters["b3"]
+    
+    # LINEAR -> RELU -> LINEAR -> RELU -> LINEAR -> SIGMOID
+    z1 = np.dot(W1, X) + b1
+    a1 = relu(z1)
+    z2 = np.dot(W2, a1) + b2
+    a2 = relu(z2)
+    z3 = np.dot(W3, a2) + b3
+    a3 = sigmoid(z3)
+    
+    cache = (z1, a1, W1, b1, z2, a2, W2, b2, z3, a3, W3, b3)
+    
+    return a3, cache
 
-<script src="/user/ssxwhunsqtlsjfjnkifmti/static/edit/js/main.min.js?v=7eb6af843396244a81afb577aedbaf89" type="text/javascript" charset="utf-8"></script>
+def backward_propagation(X, Y, cache):
+    """
+    Implement the backward propagation presented in figure 2.
+    
+    Arguments:
+    X -- input dataset, of shape (input size, number of examples)
+    Y -- true "label" vector (containing 0 if cat, 1 if non-cat)
+    cache -- cache output from forward_propagation()
+    
+    Returns:
+    gradients -- A dictionary with the gradients with respect to each parameter, activation and pre-activation variables
+    """
+    m = X.shape[1]
+    (z1, a1, W1, b1, z2, a2, W2, b2, z3, a3, W3, b3) = cache
+    
+    dz3 = 1./m * (a3 - Y)
+    dW3 = np.dot(dz3, a2.T)
+    db3 = np.sum(dz3, axis=1, keepdims = True)
+    
+    da2 = np.dot(W3.T, dz3)
+    dz2 = np.multiply(da2, np.int64(a2 > 0))
+    dW2 = np.dot(dz2, a1.T)
+    db2 = np.sum(dz2, axis=1, keepdims = True)
+    
+    da1 = np.dot(W2.T, dz2)
+    dz1 = np.multiply(da1, np.int64(a1 > 0))
+    dW1 = np.dot(dz1, X.T)
+    db1 = np.sum(dz1, axis=1, keepdims = True)
+    
+    gradients = {"dz3": dz3, "dW3": dW3, "db3": db3,
+                 "da2": da2, "dz2": dz2, "dW2": dW2, "db2": db2,
+                 "da1": da1, "dz1": dz1, "dW1": dW1, "db1": db1}
+    
+    return gradients
 
+def predict(X, y, parameters):
+    """
+    This function is used to predict the results of a  n-layer neural network.
+    
+    Arguments:
+    X -- data set of examples you would like to label
+    parameters -- parameters of the trained model
+    
+    Returns:
+    p -- predictions for the given dataset X
+    """
+    
+    m = X.shape[1]
+    p = np.zeros((1,m), dtype = np.int)
+    
+    # Forward propagation
+    a3, caches = forward_propagation(X, parameters)
+    
+    # convert probas to 0/1 predictions
+    for i in range(0, a3.shape[1]):
+        if a3[0,i] > 0.5:
+            p[0,i] = 1
+        else:
+            p[0,i] = 0
 
-<script type='text/javascript'>
-  function _remove_token_from_url() {
-    if (window.location.search.length <= 1) {
-      return;
-    }
-    var search_parameters = window.location.search.slice(1).split('&');
-    for (var i = 0; i < search_parameters.length; i++) {
-      if (search_parameters[i].split('=')[0] === 'token') {
-        // remote token from search parameters
-        search_parameters.splice(i, 1);
-        var new_search = '';
-        if (search_parameters.length) {
-          new_search = '?' + search_parameters.join('&');
-        }
-        var new_url = window.location.origin + 
-                      window.location.pathname + 
-                      new_search + 
-                      window.location.hash;
-        window.history.replaceState({}, "", new_url);
-        return;
-      }
-    }
-  }
-  _remove_token_from_url();
-</script>
-</body>
+    # print results
 
-</html>
+    #print ("predictions: " + str(p[0,:]))
+    #print ("true labels: " + str(y[0,:]))
+    print("Accuracy: "  + str(np.mean((p[0,:] == y[0,:]))))
+    
+    return p
+
+def load_2D_dataset():
+    data = scipy.io.loadmat('datasets/data.mat')
+    train_X = data['X'].T
+    train_Y = data['y'].T
+    test_X = data['Xval'].T
+    test_Y = data['yval'].T
+
+    plt.scatter(train_X[0, :], train_X[1, :], c=train_Y, s=40, cmap=plt.cm.Spectral);
+    
+    return train_X, train_Y, test_X, test_Y
+
+def plot_decision_boundary(model, X, y):
+    # Set min and max values and give it some padding
+    x_min, x_max = X[0, :].min() - 1, X[0, :].max() + 1
+    y_min, y_max = X[1, :].min() - 1, X[1, :].max() + 1
+    h = 0.01
+    # Generate a grid of points with distance h between them
+    xx, yy = np.meshgrid(np.arange(x_min, x_max, h), np.arange(y_min, y_max, h))
+    # Predict the function value for the whole grid
+    Z = model(np.c_[xx.ravel(), yy.ravel()])
+    Z = Z.reshape(xx.shape)
+    # Plot the contour and training examples
+    plt.contourf(xx, yy, Z, cmap=plt.cm.Spectral)
+    plt.ylabel('x2')
+    plt.xlabel('x1')
+    plt.scatter(X[0, :], X[1, :], c=np.squeeze(y), cmap=plt.cm.Spectral)
+    plt.show()
+    
+def predict_dec(parameters, X):
+    """
+    Used for plotting decision boundary.
+    
+    Arguments:
+    parameters -- python dictionary containing your parameters 
+    X -- input data of size (m, K)
+    
+    Returns
+    predictions -- vector of predictions of our model (red: 0 / blue: 1)
+    """
+    
+    # Predict using forward propagation and a classification threshold of 0.5
+    a3, cache = forward_propagation(X, parameters)
+    predictions = (a3 > 0.5)
+    return predictions
+
+def load_dataset():
+    np.random.seed(3)
+    train_X, train_Y = sklearn.datasets.make_moons(n_samples=300, noise=.2) #300 #0.2 
+    # Visualize the data
+    plt.scatter(train_X[:, 0], train_X[:, 1], c=train_Y, s=40, cmap=plt.cm.Spectral);
+    train_X = train_X.T
+    train_Y = train_Y.reshape((1, train_Y.shape[0]))
+    
+    return train_X, train_Y
